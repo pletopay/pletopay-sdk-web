@@ -9,7 +9,7 @@ pnpm install
 pnpm verify
 ```
 
-Node.js 22 and pnpm 10 are used for development; the packages support Node.js 20+ for tooling and evergreen browsers at runtime.
+Node.js 24 and pnpm 10 are used for development; the packages support Node.js 24+ for tooling and evergreen browsers at runtime.
 
 ## Layout
 

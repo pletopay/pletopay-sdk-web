@@ -17,7 +17,7 @@ export default defineConfig([
     format: ['esm', 'cjs'],
     dts: true,
     sourcemap: true,
-    target: 'node20',
+    target: 'node24',
     platform: 'node',
     external: ['@pletopay/node'],
   },

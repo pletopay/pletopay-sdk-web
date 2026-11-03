@@ -42,7 +42,7 @@ describe('<PletopayCheckout>', () => {
   });
 
   it('keeps the WebView on the checkout origin and hands other links to the system (SDK-02)', async () => {
-    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
     const { fetch } = fetchMock([envelope(session())]);
     const client = new PletopayCheckoutClient({
       apiUrl: 'http://api.test',
