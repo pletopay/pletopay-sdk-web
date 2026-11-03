@@ -54,7 +54,7 @@
     "check:package": "pnpm build && publint"
   },
   "dependencies": {
-    "@nuxt/kit": "^3.13.0 || ^4.0.0",
+    "@nuxt/kit": "^4.6.3",
     "@pletopay/node": "^1.0.0",
     "@pletopay/vue": "workspace:^",
     "defu": "^6.1.4"
@@ -65,10 +65,10 @@
   "devDependencies": {
     "@nuxt/cli": "^4.0.1",
     "@nuxt/module-builder": "^1.0.3",
-    "@nuxt/schema": "^4.6.2",
+    "@nuxt/schema": "^4.6.3",
     "@nuxt/test-utils": "^4.3.4",
     "h3": "^1.15.0",
-    "nuxt": "^4.6.2",
+    "nuxt": "^4.6.3",
     "vue": "^3.5.44"
   }
 }
