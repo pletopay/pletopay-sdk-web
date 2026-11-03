@@ -1,0 +1,14 @@
+{
+  "description": "Signed webhook delivery. payload_file holds the exact bytes; verify with secret, header and timestamp. Shared verbatim by every Pletopay SDK test suite.",
+  "payload_file": "webhook-payload.json",
+  "secret": "whsec_sdk_fixture_secret_0123456789",
+  "timestamp": 1790000000,
+  "header": "t=1790000000,v1=468c08f3e1b8548bcfbb754fbfc8b9716b830971da7a41237b3560da4337b9f1",
+  "header_rotated": "t=1790000000,v1=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef,v1=468c08f3e1b8548bcfbb754fbfc8b9716b830971da7a41237b3560da4337b9f1",
+  "header_wrong": "t=1790000000,v1=0000000000000000000000000000000000000000000000000000000000000000",
+  "tolerance_seconds": 300,
+  "now_inside": 1790000299,
+  "now_outside": 1790000301,
+  "event_id": "evt_01J8Z5X7Q9K2M4N6P8R0S2T4WB",
+  "event_type": "payment.succeeded"
+}

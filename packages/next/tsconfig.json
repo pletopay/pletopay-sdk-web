@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["node"],
+    "paths": { "@pletopay/js": ["../js/src/index.ts"], "@pletopay/react": ["../react/src/index.ts"] }
+  },
+  "include": ["src", "test", "*.config.ts"]
+}

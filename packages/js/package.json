@@ -1,0 +1,63 @@
+{
+  "name": "@pletopay/js",
+  "version": "1.0.0",
+  "description": "Loads pletopay.js (the Pletopay checkout popup) in the browser and returns a typed client. Used by @pletopay/react, @pletopay/vue, @pletopay/next and @pletopay/nuxt.",
+  "license": "MIT",
+  "author": "Pletopay",
+  "homepage": "https://docs.pletopay.com/checkout/popup",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evidenze/pletopay-sdk-web.git",
+    "directory": "packages/js"
+  },
+  "bugs": {
+    "url": "https://github.com/evidenze/pletopay-sdk-web/issues"
+  },
+  "keywords": [
+    "pletopay",
+    "checkout",
+    "payments",
+    "nigeria",
+    "bank transfer",
+    "popup",
+    "browser"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "check:package": "pnpm build && publint && attw --pack . --profile node16"
+  },
+  "devDependencies": {}
+}
