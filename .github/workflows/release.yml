@@ -1,5 +1,9 @@
-# Changesets release flow: on main, opens or updates a "Version packages" pull request; when that is
-# merged, publishes every package with pending changes to npm (provenance on) and tags each one.
+# Changesets release flow. On main, the version job opens or updates a "Version packages" pull
+# request; once that is merged, any package whose version is not on npm yet is published by the
+# publish job (provenance on) and tagged. Publishing uses npm trusted publishing: npm swaps the
+# job's OIDC token for a short-lived publish token, so no npm secret is stored. The publish job
+# runs in the `npm` environment, which needs a maintainer's approval and is the environment the
+# trusted publishers on npmjs.com are bound to.
 name: Release
 
 on:
@@ -7,17 +11,60 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
+  contents: read
 
 concurrency: release-${{ github.ref }}
 
 jobs:
-  release:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      unpublished: ${{ steps.unpublished.outputs.unpublished }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - uses: changesets/action@e0145edc7d9d8679003495b11f87bd8ef63c0cba # v1.5.3
+        id: changesets
+        with:
+          version: pnpm version-packages
+          title: 'Version packages'
+          commit: 'Version packages'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Find package versions that are not on npm
+        id: unpublished
+        if: steps.changesets.outputs.hasChangesets == 'false'
+        run: |
+          unpublished=false
+          for manifest in packages/*/package.json; do
+            spec="$(node -p "const p = require('./$manifest'); p.name + '@' + p.version")"
+            if ! npm view "$spec" version > /dev/null 2>&1; then
+              echo "Not on npm: $spec"
+              unpublished=true
+            fi
+          done
+          echo "unpublished=$unpublished" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: version
+    if: needs.version.outputs.unpublished == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: npm
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -32,13 +79,9 @@ jobs:
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
-      - uses: changesets/action@e0145edc7d9d8679003495b11f87bd8ef63c0cba # v1.5.3
-        with:
-          publish: pnpm release
-          version: pnpm version-packages
-          title: 'Version packages'
-          commit: 'Version packages'
+      - name: Publish
+        run: pnpm release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true'
+      - name: Push the release tags
+        run: git push origin --tags
