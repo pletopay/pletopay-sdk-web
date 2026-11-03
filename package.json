@@ -26,7 +26,7 @@
     "check:package": "pnpm -r --filter './packages/*' check:package",
     "sync:types": "node packages/js/scripts/sync-types.mjs",
     "sync:types:check": "node packages/js/scripts/sync-types.mjs --check",
-    "verify": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm sync:types:check && pnpm check:brand && pnpm test && pnpm check:package",
+    "verify": "pnpm build && pnpm lint && pnpm format:check && pnpm typecheck && pnpm sync:types:check && pnpm check:brand && pnpm test && pnpm check:package",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "pnpm build && changeset publish"
