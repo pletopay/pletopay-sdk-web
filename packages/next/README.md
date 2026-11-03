@@ -49,7 +49,7 @@ export function PayButton({ orderId }: { orderId: string }) {
 }
 ```
 
-See the [`@pletopay/react` README](https://github.com/evidenze/pletopay-sdk-web/tree/main/packages/react#readme) for `usePletopayCheckout` and the full props.
+See the [`@pletopay/react` README](https://github.com/pletopay/pletopay-sdk-web/tree/main/packages/react#readme) for `usePletopayCheckout` and the full props.
 
 ## Server
 

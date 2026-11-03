@@ -7,7 +7,7 @@
   "author": "Pletopay",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/evidenze/pletopay-sdk-web.git"
+    "url": "git+https://github.com/pletopay/pletopay-sdk-web.git"
   },
   "type": "module",
   "engines": {

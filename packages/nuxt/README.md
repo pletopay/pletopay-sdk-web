@@ -46,7 +46,7 @@ async function fetchSession() {
 </template>
 ```
 
-`usePletopay()` and `usePletopayCheckout()` are auto-imported; see the [`@pletopay/vue` README](https://github.com/evidenze/pletopay-sdk-web/tree/main/packages/vue#readme) for the state and options. pletopay.js loads in the browser only; server rendering never touches it.
+`usePletopay()` and `usePletopayCheckout()` are auto-imported; see the [`@pletopay/vue` README](https://github.com/pletopay/pletopay-sdk-web/tree/main/packages/vue#readme) for the state and options. pletopay.js loads in the browser only; server rendering never touches it.
 
 ## Server (Nitro)
 

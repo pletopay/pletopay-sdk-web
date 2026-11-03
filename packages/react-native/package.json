@@ -7,11 +7,11 @@
   "homepage": "https://docs.pletopay.com/checkout/hosted",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/evidenze/pletopay-sdk-web.git",
+    "url": "git+https://github.com/pletopay/pletopay-sdk-web.git",
     "directory": "packages/react-native"
   },
   "bugs": {
-    "url": "https://github.com/evidenze/pletopay-sdk-web/issues"
+    "url": "https://github.com/pletopay/pletopay-sdk-web/issues"
   },
   "keywords": [
     "pletopay",
