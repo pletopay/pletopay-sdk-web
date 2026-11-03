@@ -67,7 +67,7 @@
     "@nuxt/module-builder": "^1.0.3",
     "@nuxt/schema": "^4.6.2",
     "@nuxt/test-utils": "^4.3.4",
-    "h3": "^1.15.0",
+    "h3": "^2.0.8",
     "nuxt": "^4.6.2",
     "vue": "^3.5.44"
   }
