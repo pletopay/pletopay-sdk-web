@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "paths": {
+      "@pletopay/js": ["../js/src/index.ts"]
+    }
+  },
+  "include": ["src", "test", "*.config.ts"]
+}

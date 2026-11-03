@@ -1,0 +1,74 @@
+{
+  "name": "@pletopay/react",
+  "version": "1.0.0",
+  "description": "Pletopay checkout for React: a provider, a hook and a button that open the bank-transfer checkout popup with your publishable key.",
+  "license": "MIT",
+  "author": "Pletopay",
+  "homepage": "https://docs.pletopay.com/checkout/popup",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evidenze/pletopay-sdk-web.git",
+    "directory": "packages/react"
+  },
+  "bugs": {
+    "url": "https://github.com/evidenze/pletopay-sdk-web/issues"
+  },
+  "keywords": [
+    "pletopay",
+    "react",
+    "checkout",
+    "payments",
+    "nigeria",
+    "bank transfer"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "check:package": "pnpm build && publint && attw --pack . --profile node16"
+  },
+  "dependencies": {
+    "@pletopay/js": "workspace:^"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "name": "pletopay-sdk-web",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Pletopay client-side SDKs for the web and React Native: @pletopay/js, @pletopay/react, @pletopay/vue, @pletopay/next, @pletopay/nuxt, @pletopay/react-native.",
+  "license": "MIT",
+  "author": "Pletopay",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evidenze/pletopay-sdk-web.git"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "build": "pnpm -r --filter './packages/*' build",
+    "typecheck": "pnpm -r --filter './packages/*' typecheck",
+    "lint": "pnpm --filter @pletopay/nuxt exec nuxt-module-build prepare && eslint .",
+    "format": "prettier --write \"**/*.{ts,tsx,vue,mjs,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,vue,mjs,js,json,md}\"",
+    "test": "vitest run && pnpm --filter @pletopay/react-native test",
+    "test:watch": "vitest",
+    "check:brand": "node scripts/check-brand.mjs",
+    "check:package": "pnpm -r --filter './packages/*' check:package",
+    "sync:types": "node packages/js/scripts/sync-types.mjs",
+    "sync:types:check": "node packages/js/scripts/sync-types.mjs --check",
+    "verify": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm sync:types:check && pnpm check:brand && pnpm test && pnpm check:package",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@changesets/cli": "^3.0.3",
+    "@eslint/js": "^9.39.0",
+    "@types/node": "^22.19.0",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "happy-dom": "^21.0.4",
+    "prettier": "^3.9.9",
+    "publint": "^0.3.25",
+    "tsup": "^9.0.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.0",
+    "vitest": "^5.0.5"
+  },
+  "pnpm": {
+    "overrides": {
+      "@pletopay/node": "link:../pletopay-sdk-node"
+    }
+  }
+}

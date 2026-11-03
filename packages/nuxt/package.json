@@ -1,0 +1,74 @@
+{
+  "name": "@pletopay/nuxt",
+  "version": "1.0.0",
+  "description": "Pletopay for Nuxt 3 and 4: the checkout popup (composables and button, auto-imported) with runtime config, plus Nitro helpers for a server client and verified webhooks.",
+  "license": "MIT",
+  "author": "Pletopay",
+  "homepage": "https://docs.pletopay.com/checkout/popup",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evidenze/pletopay-sdk-web.git",
+    "directory": "packages/nuxt"
+  },
+  "bugs": {
+    "url": "https://github.com/evidenze/pletopay-sdk-web/issues"
+  },
+  "keywords": [
+    "pletopay",
+    "nuxt",
+    "nuxt-module",
+    "vue",
+    "checkout",
+    "webhooks",
+    "payments",
+    "nigeria"
+  ],
+  "type": "module",
+  "main": "./dist/module.mjs",
+  "types": "./dist/types.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/types.d.mts",
+      "import": "./dist/module.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "nuxt-module-build prepare && nuxt-module-build build",
+    "dev:prepare": "nuxt-module-build build --stub && nuxt-module-build prepare && nuxi prepare test/fixtures/basic",
+    "typecheck": "nuxt-module-build prepare && tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "check:package": "pnpm build && publint"
+  },
+  "dependencies": {
+    "@nuxt/kit": "^3.13.0 || ^4.0.0",
+    "@pletopay/node": "^1.0.0",
+    "@pletopay/vue": "workspace:^",
+    "defu": "^6.1.4"
+  },
+  "peerDependencies": {
+    "h3": "^1.12.0"
+  },
+  "devDependencies": {
+    "@nuxt/cli": "^4.0.1",
+    "@nuxt/module-builder": "^1.0.3",
+    "@nuxt/schema": "^4.6.2",
+    "@nuxt/test-utils": "^4.3.4",
+    "h3": "^1.15.0",
+    "nuxt": "^4.6.2",
+    "vue": "^3.5.44"
+  }
+}
