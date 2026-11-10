@@ -1,6 +1,6 @@
 {
   "name": "@pletopay/react-native",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Pletopay checkout for React Native and Expo: the hosted bank-transfer checkout in a WebView with completion detection, plus a headless client for the checkout session API.",
   "license": "MIT",
   "author": "Pletopay",
