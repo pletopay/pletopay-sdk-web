@@ -17,7 +17,7 @@ export interface PletopayCheckoutProps {
   onExpired?: (session: PublicCheckoutSession) => void;
   /** The page could not load, or the session could not be read. */
   onError?: (error: PletopayCheckoutError) => void;
-  /** Every session update observed while polling (e.g. to show "transfer received, confirming…"). */
+  /** Every session state read from the checkout API: while polling, and when a redirect is confirmed (e.g. to show "transfer received, confirming…"). */
   onSessionChange?: (session: PublicCheckoutSession) => void;
   /** Poll the session API so completion is detected even without a `success_url`. Default true. */
   poll?: boolean;
@@ -31,7 +31,7 @@ export interface PletopayCheckoutProps {
   client?: PletopayCheckoutClient;
 }
 
-function sameUrl(a: string, b: string | null): boolean {
+function sameUrl(a: string, b: string | null | undefined): boolean {
   if (!b) return false;
   try {
     const x = new URL(a);
@@ -42,10 +42,24 @@ function sameUrl(a: string, b: string | null): boolean {
   }
 }
 
+/** An http(s) URL that is not on the checkout origin: a redirect to the merchant, or a link the page opens. */
+function leavesCheckout(url: string, checkoutOrigin: string): boolean {
+  try {
+    const target = new URL(url);
+    return (target.protocol === 'https:' || target.protocol === 'http:') && target.origin !== checkoutOrigin;
+  } catch {
+    return false;
+  }
+}
+
+function asCheckoutError(error: unknown): PletopayCheckoutError {
+  return error instanceof PletopayCheckoutError ? error : new PletopayCheckoutError('unknown', String(error));
+}
+
 /**
  * The hosted checkout page in a WebView. Completion is detected two ways: the page's redirect to your
- * `success_url` is intercepted (never navigated to), and the session is polled through the checkout API.
- * Whichever happens first fires `onSuccess` once.
+ * `success_url` is intercepted (never navigated to) and confirmed with the checkout API, and the session
+ * is polled through the checkout API. Whichever happens first fires `onSuccess` once.
  *
  * @example
  * <PletopayCheckout session={token} onSuccess={({ session }) => navigation.replace('Thanks', { session })} onCancel={() => navigation.goBack()} />
@@ -67,8 +81,12 @@ export function PletopayCheckout({
   const shared = usePletopayClient();
   const client = clientProp ?? shared;
   const [loaded, setLoaded] = useState(false);
-  const [details, setDetails] = useState<PublicCheckoutSession | null>(null);
+  // The last session state read from the API, whichever request read it.
+  const details = useRef<PublicCheckoutSession | null>(null);
   const done = useRef<'success' | 'cancel' | 'expired' | null>(null);
+  // Bumped whenever tracking restarts or stops, so a late answer for an earlier session is dropped.
+  const generation = useRef(0);
+  const verifying = useRef(new Set<string>());
   const callbacks = useRef({ onSuccess, onCancel, onExpired, onError, onSessionChange });
   callbacks.current = { onSuccess, onCancel, onExpired, onError, onSessionChange };
 
@@ -98,8 +116,10 @@ export function PletopayCheckout({
 
   useEffect(() => {
     done.current = null;
+    details.current = null;
+    verifying.current.clear();
+    generation.current += 1;
     setLoaded(false);
-    setDetails(null);
     if (resolved.error) {
       callbacks.current.onError?.(resolved.error);
       return;
@@ -110,7 +130,8 @@ export function PletopayCheckout({
     void (async () => {
       try {
         const first = await client.getSession(token);
-        setDetails(first);
+        if (controller.signal.aborted) return;
+        details.current = first;
         callbacks.current.onSessionChange?.(first);
         if (first.status !== 'open') {
           finish(first.status === 'complete' ? 'success' : 'expired', first);
@@ -122,7 +143,7 @@ export function PletopayCheckout({
           signal: controller.signal,
           initial: first,
           onUpdate: (next) => {
-            setDetails(next);
+            details.current = next;
             callbacks.current.onSessionChange?.(next);
           },
         });
@@ -131,22 +152,25 @@ export function PletopayCheckout({
         else if (last.status === 'expired') finish('expired', last);
       } catch (error) {
         if (controller.signal.aborted) return;
-        callbacks.current.onError?.(
-          error instanceof PletopayCheckoutError ? error : new PletopayCheckoutError('unknown', String(error)),
-        );
+        callbacks.current.onError?.(asCheckoutError(error));
       }
     })();
-    return () => controller.abort();
+    return () => {
+      generation.current += 1;
+      controller.abort();
+    };
   }, [client, resolved.token, resolved.error, poll, pollIntervalMs, finish]);
 
-  const onShouldStartLoadWithRequest = useCallback(
-    (request: WebViewNavigation): boolean => {
-      if (details && sameUrl(request.url, details.success_url)) {
-        finish('success', details);
+  /** Decides a navigation from a session state: true lets the WebView load it. */
+  const route = useCallback(
+    (url: string, current: PublicCheckoutSession | null): boolean => {
+      // A URL match alone is never success: the API only reveals `success_url` once the session is complete.
+      if (current?.status === 'complete' && sameUrl(url, current.success_url)) {
+        finish('success', current);
         return false;
       }
-      if (details && sameUrl(request.url, details.cancel_url)) {
-        finish('cancel', details);
+      if (current && sameUrl(url, current.cancel_url)) {
+        finish('cancel', current);
         return false;
       }
       // Only the checkout origin renders inside this view. Anything else the page links to (the
@@ -154,17 +178,58 @@ export function PletopayCheckout({
       // in the system browser or mail app, never in the WebView that carries the merchant's name.
       let target: URL;
       try {
-        target = new URL(request.url);
+        target = new URL(url);
       } catch {
         return false;
       }
       if (target.origin === client.checkoutUrl) return true;
       if (target.protocol === 'https:' || target.protocol === 'http:' || target.protocol === 'mailto:') {
-        Linking.openURL(request.url).catch(() => undefined);
+        Linking.openURL(url).catch(() => undefined);
       }
       return false;
     },
-    [client, details, finish],
+    [client, finish],
+  );
+
+  /**
+   * The page is leaving the checkout origin and no completed session is known here yet (polling is
+   * off, or its last answer predates the completion). The navigation is already blocked; ask the
+   * API once whether the session completed, then treat the URL accordingly.
+   */
+  const verifyRedirect = useCallback(
+    async (url: string): Promise<void> => {
+      if (!resolved.token || verifying.current.has(url)) return;
+      const run = generation.current;
+      verifying.current.add(url);
+      try {
+        const fresh = await client.getSession(resolved.token);
+        if (run !== generation.current) return;
+        // A poll may have read `complete` while this request was in flight: never step back from it.
+        if (details.current?.status !== 'complete') {
+          details.current = fresh;
+          callbacks.current.onSessionChange?.(fresh);
+        }
+      } catch (error) {
+        if (run !== generation.current) return;
+        callbacks.current.onError?.(asCheckoutError(error));
+      } finally {
+        if (run === generation.current) verifying.current.delete(url);
+      }
+      route(url, details.current);
+    },
+    [client, resolved.token, route],
+  );
+
+  const onShouldStartLoadWithRequest = useCallback(
+    (request: WebViewNavigation): boolean => {
+      const current = details.current;
+      if (current?.status !== 'complete' && leavesCheckout(request.url, client.checkoutUrl)) {
+        void verifyRedirect(request.url);
+        return false;
+      }
+      return route(request.url, current);
+    },
+    [client, route, verifyRedirect],
   );
 
   if (!resolved.url) return <View style={[styles.container, style]} testID="pletopay-checkout-invalid" />;

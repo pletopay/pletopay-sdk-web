@@ -5,6 +5,14 @@ export const DEFAULT_API_URL = 'https://api.pletopay.com';
 export const DEFAULT_CHECKOUT_URL = 'https://checkout.pletopay.com';
 /** The checkout API allows about two requests a second per device; poll no faster than this. */
 export const MIN_POLL_INTERVAL_MS = 2000;
+/**
+ * A session can stay `open` for a while after its `expires_at` (a transfer sent just before the
+ * deadline is still accepted while it is confirmed) and can still become `complete` then. From
+ * `expires_at` on, polling slows to this interval.
+ */
+export const POST_EXPIRY_POLL_INTERVAL_MS = 15_000;
+/** How long after the session's `expires_at` polling keeps waiting for a final state by default. */
+export const POLL_DEADLINE_AFTER_EXPIRY_MS = 30 * 60_000;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{8,64}$/;
 
 export interface PletopayCheckoutClientOptions {
@@ -25,7 +33,7 @@ export interface PollOptions {
   signal?: AbortSignal;
   /** Called with every fetched session, including the first. */
   onUpdate?: (session: PublicCheckoutSession) => void;
-  /** Give up after this long (default: until the session's `expires_at`, plus a minute). */
+  /** Give up after this long (default: until 30 minutes after the session's `expires_at`). */
   timeoutMs?: number;
   /** A state you already fetched: polling starts from it instead of fetching again. */
   initial?: PublicCheckoutSession;
@@ -90,13 +98,18 @@ export class PletopayCheckoutClient {
     return this.request('POST', `/checkout/v1/sessions/${encodeURIComponent(this.resolveToken(session))}/open`);
   }
 
-  /** Polls until the session is no longer `open` (complete or expired), the signal aborts, or the timeout passes. */
+  /**
+   * Polls until the session is no longer `open` (complete or expired), the signal aborts, or the
+   * timeout passes. Once the session's `expires_at` has passed it polls every 15 s at most: the
+   * session stays `open` until Pletopay has settled whether a late transfer arrived.
+   */
   async pollSession(session: string, options: PollOptions = {}): Promise<PublicCheckoutSession> {
     const interval = Math.max(MIN_POLL_INTERVAL_MS, options.intervalMs ?? 4000);
     let current = options.initial ?? (await this.getSession(session));
     if (!options.initial) options.onUpdate?.(current);
+    // `|| 0`: an unreadable `expires_at` counts from now.
     const deadline =
-      Date.now() + (options.timeoutMs ?? Math.max(60_000, Date.parse(current.expires_at) - Date.now() + 60_000));
+      Date.now() + (options.timeoutMs ?? Math.max(0, msUntil(current.expires_at) || 0) + POLL_DEADLINE_AFTER_EXPIRY_MS);
     while (current.status === 'open') {
       if (options.signal?.aborted) return current;
       if (Date.now() > deadline)
@@ -106,7 +119,8 @@ export class PletopayCheckoutClient {
           undefined,
           true,
         );
-      await sleep(interval, options.signal);
+      const expired = msUntil(current.expires_at) <= 0;
+      await sleep(expired ? Math.max(interval, POST_EXPIRY_POLL_INTERVAL_MS) : interval, options.signal);
       if (options.signal?.aborted) return current;
       try {
         current = await this.getSession(session);
@@ -166,6 +180,11 @@ export class PletopayCheckoutClient {
       response.status === 429 || response.status >= 500,
     );
   }
+}
+
+/** Milliseconds from now until an ISO timestamp (negative once it has passed); NaN if it cannot be read. */
+function msUntil(timestamp: string): number {
+  return Date.parse(timestamp) - Date.now();
 }
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {

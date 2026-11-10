@@ -1,4 +1,9 @@
-import { PletopayCheckoutClient, PletopayCheckoutError } from '../src';
+import {
+  POLL_DEADLINE_AFTER_EXPIRY_MS,
+  POST_EXPIRY_POLL_INTERVAL_MS,
+  PletopayCheckoutClient,
+  PletopayCheckoutError,
+} from '../src';
 import { TOKEN, apiError, envelope, fetchMock, session } from './helpers';
 
 describe('PletopayCheckoutClient', () => {
@@ -108,5 +113,65 @@ describe('PletopayCheckoutClient', () => {
     await jest.advanceTimersByTimeAsync(9000);
     expect(await p2).toMatchObject({ code: 'timeout' });
     jest.useRealTimers();
+  });
+
+  it('keeps polling an open session past expires_at, every 15 s, until 30 minutes after it', async () => {
+    jest.useFakeTimers();
+    const start = Date.now();
+    const expires_at = new Date(start + 10_000).toISOString();
+    const at: number[] = [];
+    const client = new PletopayCheckoutClient({
+      apiUrl: 'http://api.test',
+      fetch: async () => {
+        at.push(Date.now() - start);
+        return envelope(session({ expires_at }));
+      },
+    });
+    const outcome = client.pollSession(TOKEN, { intervalMs: 2000 }).catch((e: unknown) => e);
+    await jest.advanceTimersByTimeAsync(10_000 + POLL_DEADLINE_AFTER_EXPIRY_MS - 1000);
+    // Every 2 s until expires_at, every 15 s from then on, and still going long after the old one-minute allowance.
+    expect(at.slice(0, 9)).toEqual([0, 2000, 4000, 6000, 8000, 10_000, 25_000, 40_000, 55_000]);
+    expect(at.at(-1)).toBe(10_000 + POLL_DEADLINE_AFTER_EXPIRY_MS - POST_EXPIRY_POLL_INTERVAL_MS);
+    await jest.advanceTimersByTimeAsync(1000 + POST_EXPIRY_POLL_INTERVAL_MS);
+    expect(await outcome).toMatchObject({ code: 'timeout', retryable: true });
+    const polled = at.length;
+    await jest.advanceTimersByTimeAsync(10 * 60_000);
+    expect(at).toHaveLength(polled);
+  });
+
+  it('returns a completion that arrives after expires_at, and lets an explicit timeout or a slower interval win', async () => {
+    jest.useFakeTimers();
+    const start = Date.now();
+    const expires_at = new Date(start + 10_000).toISOString();
+    const polling = (completeAfterMs: number) => {
+      const at: number[] = [];
+      const client = new PletopayCheckoutClient({
+        apiUrl: 'http://api.test',
+        fetch: async () => {
+          at.push(Date.now() - start);
+          return envelope(session({ expires_at, status: Date.now() - start >= completeAfterMs ? 'complete' : 'open' }));
+        },
+      });
+      return { at, client };
+    };
+
+    const late = polling(10_000 + 12 * 60_000);
+    const completed = late.client.pollSession(TOKEN, { intervalMs: 2000 });
+    const explicit = polling(Infinity);
+    const timedOut = explicit.client
+      .pollSession(TOKEN, { intervalMs: 2000, timeoutMs: 60_000 })
+      .catch((e: unknown) => e);
+    const slow = polling(Infinity);
+    const controller = new AbortController();
+    const slowPoll = slow.client.pollSession(TOKEN, { intervalMs: 20_000, signal: controller.signal });
+
+    await jest.advanceTimersByTimeAsync(10_000 + 13 * 60_000);
+    expect((await completed).status).toBe('complete');
+    expect(late.at.at(-1)).toBe(10_000 + 12 * 60_000);
+    expect(await timedOut).toMatchObject({ code: 'timeout' });
+    expect(explicit.at.at(-1)).toBeLessThanOrEqual(60_000 + POST_EXPIRY_POLL_INTERVAL_MS);
+    expect(slow.at.slice(0, 4)).toEqual([0, 20_000, 40_000, 60_000]); // a slower caller interval is kept
+    controller.abort();
+    expect((await slowPoll).status).toBe('open');
   });
 });

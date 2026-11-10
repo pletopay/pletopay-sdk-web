@@ -2,6 +2,7 @@ import type { PublicCheckoutSession } from '../src/types';
 
 export const TOKEN = '0OrCJ44hSQU_xb9de8Z7YiVAN01RQViC';
 
+/** A session as the checkout API presents it: `success_url` is only revealed once it is complete. */
 export function session(overrides: Partial<PublicCheckoutSession> = {}): PublicCheckoutSession {
   return {
     object: 'checkout_session',
@@ -13,7 +14,7 @@ export function session(overrides: Partial<PublicCheckoutSession> = {}): PublicC
     description: null,
     payment_status: null,
     bank_transfer: null,
-    success_url: 'https://shop.test/thanks',
+    success_url: overrides.status === 'complete' ? 'https://shop.test/thanks' : null,
     cancel_url: 'https://shop.test/cart',
     expires_at: new Date(Date.now() + 3_600_000).toISOString(),
     ...overrides,
